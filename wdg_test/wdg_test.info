@@ -1,0 +1,15 @@
+name = WDG test
+description = WDG test module
+core = 7.x
+package = WDG
+version = 7.x-1.0
+project = wdg_test
+dependencies[] = ctools
+dependencies[] = page_manager
+dependencies[] = panels
+dependencies[] = views
+features[ctools][] = page_manager:pages_default:1
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features[page_manager_pages][] = test_time
+features[views_view][] = content_table

@@ -1,0 +1,125 @@
+<?php
+
+/**
+ * @file
+ * Code for the WDG Test feature.
+ */
+
+include_once 'wdg_test.features.inc';
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function wdg_test_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form_state['build_info']['base_form_id']) && $form_state['build_info']['base_form_id'] == 'node_form') {
+    $additional_field = '';
+
+    if (isset($form['#node_edit_form']) && $form['#node_edit_form'] == 1) {
+      $additional_field = db_select('additional_field', 'af')
+        ->fields('af', array('additional_field_value'))
+        ->condition('af.entity_id', $form['nid']['#value'])
+        ->condition('af.revision_id', $form['vid']['#value'])
+        ->condition('af.language', $form['language']['#value'])
+        ->execute()->fetchField();
+    }
+
+    $form['additional_field'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Additional field'),
+      '#default_value' => $additional_field,
+    );
+
+    $form['actions']['submit']['#submit'][] = 'wdg_test_node_save_additional_field';
+  }
+}
+
+
+function wdg_test_node_save_additional_field($form, &$form_state) {
+  $nid = $form_state['values']['nid'];
+  $vid = $form_state['values']['vid'];
+  $lang = $form_state['values']['language'];
+  $additional_field = $form_state['values']['additional_field'];
+
+  if (!$vid) {
+    $node = node_load($nid);
+    $vid = $node->vid;
+  }
+
+  db_merge('additional_field')
+    ->key(
+      array(
+        'entity_id' => $nid,
+        'revision_id' => $vid,
+        'language' => $lang,
+      )
+    )
+    ->fields(
+      array(
+        'additional_field_value' => $additional_field
+      )
+    )
+    ->execute();
+
+  if (!$additional_field) {
+    db_query("DELETE FROM {additional_field} WHERE entity_id = :nid AND revision_id = :vid AND language = :lang", array(':nid' => $nid, ':vid' => $vid, ':lang' => $lang));
+  }
+}
+
+
+/**
+ * Implements hook_node_delete().
+ */
+function wdg_test_node_delete($node) {
+  $nid = $node->nid;
+  $vid = $node->vid;
+  db_query("DELETE FROM {additional_field} WHERE entity_id = :nid AND revision_id = :vid", array(':nid' => $nid, ':vid' => $vid));
+}
+
+
+/**
+ * Implementation of hook_ctools_plugin_directory().
+ */
+function wdg_test_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'ctools' && !empty($plugin)) {
+    return "plugins/{$plugin}";
+  }
+}
+
+function wdg_test_views_data() {
+  $data['additional_field']['table']['group'] = t('Additional field');
+
+  $data['additional_field']['table']['base'] = array(
+    'field' => 'nid',
+    'title' => t('Additional field'),
+    'help' => t('Additional field content and can be related to nodes.'),
+    'weight' => -10,
+  );
+
+  $data['additional_field']['table']['join'] = array(
+    'node' => array(
+      'left_field' => 'nid',
+      'field' => 'entity_id',
+    ),
+  );
+
+  $data['additional_field']['additional_field_value'] = array(
+    'title' => t('Additional field'),
+    'help' => t('Additional field text field.'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE,
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_string',
+    ),
+  );
+
+  return $data;
+}
