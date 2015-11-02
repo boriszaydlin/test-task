@@ -1,5 +1,5 @@
 name = WDG test
-description = WDG test module
+description = WDG test module (old)
 core = 7.x
 package = WDG
 version = 7.x-1.0
